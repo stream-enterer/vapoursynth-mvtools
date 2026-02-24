@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <stdlib.h>
 
-#include <VSHelper.h>
+#include <VSHelper4.h>
 
 #include "CPU.h"
 #include "SimpleResize.h"

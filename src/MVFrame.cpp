@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 
-#include <VSHelper.h>
+#include <VSHelper4.h>
 
 #include "CPU.h"
 #include "MVFrame.h"
@@ -71,13 +71,16 @@ void HorizontalWiener_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
 
 static void Average2_sse2(uint8_t *pDst, const uint8_t *pSrc1, const uint8_t *pSrc2, intptr_t nPitch, intptr_t nWidth, intptr_t nHeight) {
     for (int y = 0; y < nHeight; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m128i m0 = _mm_loadu_si128((const __m128i *)&pSrc1[x]);
             __m128i m1 = _mm_loadu_si128((const __m128i *)&pSrc2[x]);
 
             m0 = _mm_avg_epu8(m0, m1);
             _mm_storeu_si128((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc1[x] + pSrc2[x] + 1) >> 1;
 
         pSrc1 += nPitch;
         pSrc2 += nPitch;
@@ -91,13 +94,16 @@ static void VerticalBilinear_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t n
     (void)bitsPerSample;
 
     for (int y = 0; y < nHeight - 1; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m128i m0 = _mm_loadu_si128((const __m128i *)&pSrc[x]);
             __m128i m1 = _mm_loadu_si128((const __m128i *)&pSrc[x + nPitch]);
 
             m0 = _mm_avg_epu8(m0, m1);
             _mm_storeu_si128((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + nPitch] + 1) >> 1;
 
         pSrc += nPitch;
         pDst += nPitch;
@@ -113,13 +119,16 @@ static void HorizontalBilinear_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t
     (void)bitsPerSample;
 
     for (int y = 0; y < nHeight; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m128i m0 = _mm_loadu_si128((const __m128i *)&pSrc[x]);
             __m128i m1 = _mm_loadu_si128((const __m128i *)&pSrc[x + 1]);
 
             m0 = _mm_avg_epu8(m0, m1);
             _mm_storeu_si128((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth - 1; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + 1] + 1) >> 1;
 
         pDst[nWidth - 1] = pSrc[nWidth - 1];
 
@@ -134,7 +143,8 @@ static void DiagonalBilinear_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t n
     (void)bitsPerSample;
 
     for (int y = 0; y < nHeight - 1; y++) {
-        for (int x = 0; x < nWidth; x += 8) {
+        int x;
+        for (x = 0; x <= nWidth - 8; x += 8) {
             __m128i m0 = _mm_loadl_epi64((const __m128i *)&pSrc[x]);
             __m128i m1 = _mm_loadl_epi64((const __m128i *)&pSrc[x + 1]);
             __m128i m2 = _mm_loadl_epi64((const __m128i *)&pSrc[x + nPitch]);
@@ -155,6 +165,8 @@ static void DiagonalBilinear_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t n
             m0 = _mm_packus_epi16(m0, m0);
             _mm_storel_epi64((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth - 1; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + 1] + pSrc[x + nPitch] + pSrc[x + nPitch + 1] + 2) >> 2;
 
         pDst[nWidth - 1] = (pSrc[nWidth - 1] + pSrc[nWidth - 1 + nPitch] + 1) >> 1;
 
@@ -162,13 +174,16 @@ static void DiagonalBilinear_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t n
         pDst += nPitch;
     }
 
-    for (int x = 0; x < nWidth; x += 8) {
+    int x;
+    for (x = 0; x <= nWidth - 8; x += 8) {
         __m128i m0 = _mm_loadl_epi64((const __m128i *)&pSrc[x]);
         __m128i m1 = _mm_loadl_epi64((const __m128i *)&pSrc[x + 1]);
 
         m0 = _mm_avg_epu8(m0, m1);
         _mm_storel_epi64((__m128i *)&pDst[x], m0);
     }
+    for (; x < nWidth - 1; x++)
+        pDst[x] = (pSrc[x] + pSrc[x + 1] + 1) >> 1;
 
     pDst[nWidth - 1] = pSrc[nWidth - 1];
 }
@@ -383,20 +398,24 @@ static void VerticalWiener_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPi
     (void)bitsPerSample;
 
     for (int y = 0; y < 2; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m128i m0 = _mm_loadu_si128((const __m128i *)&pSrc[x]);
             __m128i m1 = _mm_loadu_si128((const __m128i *)&pSrc[x + nPitch]);
 
             m0 = _mm_avg_epu8(m0, m1);
             _mm_storeu_si128((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + nPitch] + 1) >> 1;
 
         pSrc += nPitch;
         pDst += nPitch;
     }
 
     for (int y = 2; y < nHeight - 4; y++) {
-        for (int x = 0; x < nWidth; x += 8) {
+        int x;
+        for (x = 0; x <= nWidth - 8; x += 8) {
             __m128i m0 = _mm_loadl_epi64((const __m128i *)&pSrc[x - nPitch * 2]);
             __m128i m1 = _mm_loadl_epi64((const __m128i *)&pSrc[x - nPitch]);
             __m128i m2 = _mm_loadl_epi64((const __m128i *)&pSrc[x]);
@@ -428,19 +447,31 @@ static void VerticalWiener_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPi
             m0 = _mm_packus_epi16(m0, m0);
             _mm_storel_epi64((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++) {
+            int val = (pSrc[x - nPitch * 2] + pSrc[x + nPitch * 3]
+                     + 5 * (4 * (pSrc[x] + pSrc[x + nPitch])
+                          - (pSrc[x - nPitch] + pSrc[x + nPitch * 2]))
+                     + 16) >> 5;
+            if (val < 0) val = 0;
+            if (val > 255) val = 255;
+            pDst[x] = val;
+        }
 
         pSrc += nPitch;
         pDst += nPitch;
     }
 
     for (int y = nHeight - 4; y < nHeight - 1; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m128i m0 = _mm_loadu_si128((const __m128i *)&pSrc[x]);
             __m128i m1 = _mm_loadu_si128((const __m128i *)&pSrc[x + nPitch]);
 
             m0 = _mm_avg_epu8(m0, m1);
             _mm_storeu_si128((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + nPitch] + 1) >> 1;
 
         pSrc += nPitch;
         pDst += nPitch;
@@ -459,7 +490,8 @@ static void HorizontalWiener_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t n
         pDst[0] = (pSrc[0] + pSrc[1] + 1) >> 1;
         pDst[1] = (pSrc[1] + pSrc[2] + 1) >> 1;
 
-        for (int x = 2; x < nWidth - 4; x += 8) {
+        int x;
+        for (x = 2; x <= nWidth - 8; x += 8) {
             __m128i m0 = _mm_loadl_epi64((const __m128i *)&pSrc[x - 2]);
             __m128i m1 = _mm_loadl_epi64((const __m128i *)&pSrc[x - 1]);
             __m128i m2 = _mm_loadl_epi64((const __m128i *)&pSrc[x]);
@@ -491,8 +523,17 @@ static void HorizontalWiener_sse2(uint8_t *pDst, const uint8_t *pSrc, intptr_t n
             m0 = _mm_packus_epi16(m0, m0);
             _mm_storel_epi64((__m128i *)&pDst[x], m0);
         }
+        for (; x < nWidth - 4; x++) {
+            int val = (pSrc[x - 2] + pSrc[x + 3]
+                     + 5 * (4 * (pSrc[x] + pSrc[x + 1])
+                          - (pSrc[x - 1] + pSrc[x + 2]))
+                     + 16) >> 5;
+            if (val < 0) val = 0;
+            if (val > 255) val = 255;
+            pDst[x] = val;
+        }
 
-        for (int x = nWidth - 4; x < nWidth - 1; x++)
+        for (; x < nWidth - 1; x++)
             pDst[x] = (pSrc[x] + pSrc[x + 1] + 1) >> 1;
 
         pDst[nWidth - 1] = pSrc[nWidth - 1];
@@ -1366,7 +1407,7 @@ void mvpUpdate(MVPlane *mvp, uint8_t *pSrc, int _nPitch) { //v2.0
 
 void mvpFillPlane(MVPlane *mvp, const uint8_t *pNewPlane, int nNewPitch) {
     if (!mvp->isFilled)
-        vs_bitblt(mvp->pPlane[0] + mvp->nOffsetPadding, mvp->nPitch, pNewPlane, nNewPitch, mvp->nWidth * mvp->bytesPerSample, mvp->nHeight);
+        vsh::bitblt(mvp->pPlane[0] + mvp->nOffsetPadding, mvp->nPitch, pNewPlane, nNewPitch, mvp->nWidth * mvp->bytesPerSample, mvp->nHeight);
     mvp->isFilled = 1;
 }
 

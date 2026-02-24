@@ -458,8 +458,12 @@ static void pobFetchPredictors(PlaneOfBlocks *pob) {
     // if there are no other planes, predictor is the median
     if (pob->smallestPlane)
         pob->predictor = pob->predictors[0];
-    double scale = pob->LSAD / (double)(pob->LSAD + (pob->predictor.sad >> 1));
-    pob->nLambda = pob->nLambda * scale * scale;
+    if (pob->LSAD == 0)
+        pob->nLambda = 0;
+    else {
+        double scale = pob->LSAD / (double)(pob->LSAD + (pob->predictor.sad >> 1));
+        pob->nLambda = pob->nLambda * scale * scale;
+    }
 }
 
 

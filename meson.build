@@ -1,6 +1,6 @@
 project('MVTools', 'c', 'cpp',
         version: '24',
-        default_options: ['c_std=c99', 'cpp_std=c++11', 'buildtype=release', 'b_lto=true'],
+        default_options: ['c_std=c99', 'cpp_std=c++11', 'buildtype=release', 'optimization=3', 'b_lto=true'],
         meson_version: '>=0.46')
 
 
@@ -114,7 +114,7 @@ helper_libs = []
 
 
 if host_cpu_family.startswith('x86')
-  cflags += ['-mfpmath=sse', '-msse2', '-DMVTOOLS_X86=1']
+  cflags += ['-mfpmath=sse', '-march=native', '-mtune=native', '-ffp-contract=fast', '-DMVTOOLS_X86=1']
 
 
   nasm_sources = [
@@ -161,7 +161,7 @@ if host_cpu_family.startswith('x86')
   helper_libs += static_library('avx2',
                                 libavx2_sources,
                                 dependencies: vapoursynth_dep,
-                                cpp_args: [cflags, '-mavx2', '-mtune=haswell'],
+                                cpp_args: [cflags, '-mavx2'],
                                 install: false)
 endif
 

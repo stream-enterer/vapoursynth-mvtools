@@ -18,13 +18,16 @@
 
 void Average2_avx2(uint8_t *pDst, const uint8_t *pSrc1, const uint8_t *pSrc2, intptr_t nPitch, intptr_t nWidth, intptr_t nHeight) {
     for (int y = 0; y < nHeight; y++) {
-        for (int x = 0; x < nWidth; x += 32) {
+        int x;
+        for (x = 0; x <= nWidth - 32; x += 32) {
             __m256i m0 = _mm256_loadu_si256((const __m256i *)&pSrc1[x]);
             __m256i m1 = _mm256_loadu_si256((const __m256i *)&pSrc2[x]);
 
             m0 = _mm256_avg_epu8(m0, m1);
             _mm256_storeu_si256((__m256i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc1[x] + pSrc2[x] + 1) >> 1;
 
         pSrc1 += nPitch;
         pSrc2 += nPitch;
@@ -38,13 +41,16 @@ void VerticalBilinear_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
     (void)bitsPerSample;
 
     for (int y = 0; y < nHeight - 1; y++) {
-        for (int x = 0; x < nWidth; x += 32) {
+        int x;
+        for (x = 0; x <= nWidth - 32; x += 32) {
             __m256i m0 = _mm256_loadu_si256((const __m256i *)&pSrc[x]);
             __m256i m1 = _mm256_loadu_si256((const __m256i *)&pSrc[x + nPitch]);
 
             m0 = _mm256_avg_epu8(m0, m1);
             _mm256_storeu_si256((__m256i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + nPitch] + 1) >> 1;
 
         pSrc += nPitch;
         pDst += nPitch;
@@ -60,13 +66,16 @@ void HorizontalBilinear_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch
     (void)bitsPerSample;
 
     for (int y = 0; y < nHeight; y++) {
-        for (int x = 0; x < nWidth; x += 32) {
+        int x;
+        for (x = 0; x <= nWidth - 32; x += 32) {
             __m256i m0 = _mm256_loadu_si256((const __m256i *)&pSrc[x]);
             __m256i m1 = _mm256_loadu_si256((const __m256i *)&pSrc[x + 1]);
 
             m0 = _mm256_avg_epu8(m0, m1);
             _mm256_storeu_si256((__m256i *)&pDst[x], m0);
         }
+        for (; x < nWidth - 1; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + 1] + 1) >> 1;
 
         pDst[nWidth - 1] = pSrc[nWidth - 1];
 
@@ -81,7 +90,8 @@ void DiagonalBilinear_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
     (void)bitsPerSample;
 
     for (int y = 0; y < nHeight - 1; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m256i m0 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x]));
             __m256i m1 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x + 1]));
             __m256i m2 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x + nPitch]));
@@ -98,6 +108,8 @@ void DiagonalBilinear_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
             m0 = _mm256_permute4x64_epi64(m0, _MM_SHUFFLE(0, 0, 2, 0));
             _mm_storeu_si128((__m128i *)&pDst[x], _mm256_castsi256_si128(m0));
         }
+        for (; x < nWidth - 1; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + 1] + pSrc[x + nPitch] + pSrc[x + nPitch + 1] + 2) >> 2;
 
         pDst[nWidth - 1] = (pSrc[nWidth - 1] + pSrc[nWidth - 1 + nPitch] + 1) >> 1;
 
@@ -105,13 +117,16 @@ void DiagonalBilinear_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
         pDst += nPitch;
     }
 
-    for (int x = 0; x < nWidth; x += 32) {
+    int x;
+    for (x = 0; x <= nWidth - 32; x += 32) {
         __m256i m0 = _mm256_loadu_si256((const __m256i *)&pSrc[x]);
         __m256i m1 = _mm256_loadu_si256((const __m256i *)&pSrc[x + 1]);
 
         m0 = _mm256_avg_epu8(m0, m1);
         _mm256_storeu_si256((__m256i *)&pDst[x], m0);
     }
+    for (; x < nWidth - 1; x++)
+        pDst[x] = (pSrc[x] + pSrc[x + 1] + 1) >> 1;
 
     pDst[nWidth - 1] = pSrc[nWidth - 1];
 }
@@ -121,20 +136,24 @@ void VerticalWiener_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
     (void)bitsPerSample;
 
     for (int y = 0; y < 2; y++) {
-        for (int x = 0; x < nWidth; x += 32) {
+        int x;
+        for (x = 0; x <= nWidth - 32; x += 32) {
             __m256i m0 = _mm256_loadu_si256((const __m256i *)&pSrc[x]);
             __m256i m1 = _mm256_loadu_si256((const __m256i *)&pSrc[x + nPitch]);
 
             m0 = _mm256_avg_epu8(m0, m1);
             _mm256_storeu_si256((__m256i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + nPitch] + 1) >> 1;
 
         pSrc += nPitch;
         pDst += nPitch;
     }
 
     for (int y = 2; y < nHeight - 4; y++) {
-        for (int x = 0; x < nWidth; x += 16) {
+        int x;
+        for (x = 0; x <= nWidth - 16; x += 16) {
             __m256i m0 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x - nPitch * 2]));
             __m256i m1 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x - nPitch]));
             __m256i m2 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x]));
@@ -160,19 +179,31 @@ void VerticalWiener_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
             m0 = _mm256_permute4x64_epi64(m0, _MM_SHUFFLE(0, 0, 2, 0));
             _mm_storeu_si128((__m128i *)&pDst[x], _mm256_castsi256_si128(m0));
         }
+        for (; x < nWidth; x++) {
+            int val = (pSrc[x - nPitch * 2] + pSrc[x + nPitch * 3]
+                     + 5 * (4 * (pSrc[x] + pSrc[x + nPitch])
+                          - (pSrc[x - nPitch] + pSrc[x + nPitch * 2]))
+                     + 16) >> 5;
+            if (val < 0) val = 0;
+            if (val > 255) val = 255;
+            pDst[x] = val;
+        }
 
         pSrc += nPitch;
         pDst += nPitch;
     }
 
     for (int y = nHeight - 4; y < nHeight - 1; y++) {
-        for (int x = 0; x < nWidth; x += 32) {
+        int x;
+        for (x = 0; x <= nWidth - 32; x += 32) {
             __m256i m0 = _mm256_loadu_si256((const __m256i *)&pSrc[x]);
             __m256i m1 = _mm256_loadu_si256((const __m256i *)&pSrc[x + nPitch]);
 
             m0 = _mm256_avg_epu8(m0, m1);
             _mm256_storeu_si256((__m256i *)&pDst[x], m0);
         }
+        for (; x < nWidth; x++)
+            pDst[x] = (pSrc[x] + pSrc[x + nPitch] + 1) >> 1;
 
         pSrc += nPitch;
         pDst += nPitch;
@@ -191,7 +222,8 @@ void HorizontalWiener_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
         pDst[0] = (pSrc[0] + pSrc[1] + 1) >> 1;
         pDst[1] = (pSrc[1] + pSrc[2] + 1) >> 1;
 
-        for (int x = 2; x < nWidth - 4; x += 16) {
+        int x;
+        for (x = 2; x <= nWidth - 16; x += 16) {
             __m256i m0 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x - 2]));
             __m256i m1 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x - 1]));
             __m256i m2 = _mm256_cvtepu8_epi16(_mm_loadu_si128((const __m128i *)&pSrc[x]));
@@ -217,8 +249,17 @@ void HorizontalWiener_avx2(uint8_t *pDst, const uint8_t *pSrc, intptr_t nPitch,
             m0 = _mm256_permute4x64_epi64(m0, _MM_SHUFFLE(0, 0, 2, 0));
             _mm_storeu_si128((__m128i *)&pDst[x], _mm256_castsi256_si128(m0));
         }
+        for (; x < nWidth - 4; x++) {
+            int val = (pSrc[x - 2] + pSrc[x + 3]
+                     + 5 * (4 * (pSrc[x] + pSrc[x + 1])
+                          - (pSrc[x - 1] + pSrc[x + 2]))
+                     + 16) >> 5;
+            if (val < 0) val = 0;
+            if (val > 255) val = 255;
+            pDst[x] = val;
+        }
 
-        for (int x = nWidth - 4; x < nWidth - 1; x++)
+        for (; x < nWidth - 1; x++)
             pDst[x] = (pSrc[x] + pSrc[x + 1] + 1) >> 1;
 
         pDst[nWidth - 1] = pSrc[nWidth - 1];
