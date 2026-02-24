@@ -1,17 +1,26 @@
-orig/
-*.zip
-releases/
-test stuff/
+# Build directories
+build/
+builddir/
+
+# Object files and libraries
 *.o
+*.obj
+*.a
 *.la
 *.lo
 *.so
+*.so.*
 *.dll
-.libs
+*.dylib
+*.lib
+*.exp
+*.pdb
+
+# Autotools (legacy)
 Makefile
 Makefile.in
 aclocal.m4
-autom4te.cache
+autom4te.cache/
 compile
 config.guess
 config.log
@@ -25,5 +34,43 @@ ltmain.sh
 missing
 .deps/
 .dirstamp
+.libs/
+
+# Archives and releases
+*.zip
+orig/
+releases/
+test stuff/
+
+# Editor / IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+*.kate-swp
+
+# Environment / shell config (sandbox artifacts)
+.bash_profile
+.bashrc
+.zshrc
+.zprofile
+.profile
+.gitconfig
+.gitmodules
+.ripgreprc
+.mcp.json
+
+# Bare-repo fragments (sandbox artifacts)
+HEAD
+config
+hooks
+objects
+refs
+
+# Caches and virtual environments
 .cache/
 .venv/
+
+# Claude Code
+.claude/
